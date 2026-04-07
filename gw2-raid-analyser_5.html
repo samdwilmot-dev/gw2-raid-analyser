@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GW2 Raid Analyser</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#090c12;--bg2:#0f1420;--bg3:#151c2e;
+  --gold:#c9a84c;--gold2:#e8cf88;
+  --teal:#3ec9d6;--red:#e05c5c;--orange:#e09050;--green:#4ec87a;--purple:#a06cd5;--blue:#5b9bd5;
+  --border:rgba(201,168,76,0.2);--border2:rgba(201,168,76,0.08);
+  --text:#c4cad8;--text2:#7a8499;--text3:#4a5266;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Crimson Text',Georgia,serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:16px;line-height:1.5;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 70% 40% at 50% 0%,rgba(201,168,76,.07) 0%,transparent 65%),
+             radial-gradient(ellipse 30% 50% at 100% 100%,rgba(62,201,214,.04) 0%,transparent 60%)}
+.app{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:0 20px 80px}
+.header{text-align:center;padding:48px 0 34px;border-bottom:1px solid var(--border);margin-bottom:26px;position:relative}
+.header::before,.header::after{content:'⚜';position:absolute;top:50px;color:var(--gold);opacity:.22;font-size:26px}
+.header::before{left:0}.header::after{right:0}
+.eyebrow{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;text-transform:uppercase;color:var(--gold);opacity:.5;margin-bottom:10px}
+h1{font-family:'Cinzel',serif;font-size:clamp(22px,5vw,40px);font-weight:900;letter-spacing:3px;color:var(--gold);text-shadow:0 0 40px rgba(201,168,76,.2);line-height:1.1}
+.header-sub{margin-top:8px;color:var(--text2);font-style:italic;font-size:16px}
+.vtag{display:inline-block;font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;padding:2px 8px;border-radius:3px;
+  background:rgba(91,155,213,.1);color:var(--blue);border:1px solid rgba(91,155,213,.2);margin-top:10px}
+.input-panel{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:22px;margin-bottom:22px;position:relative}
+.input-panel::before{content:'';position:absolute;top:0;left:24px;right:24px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.3}
+.lbl{display:block;font-family:'Cinzel',serif;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:10px}
+.lbl span{color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0;text-transform:none;margin-left:8px}
+textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);
+  font-family:'JetBrains Mono',monospace;font-size:12px;padding:12px 14px;resize:vertical;min-height:80px;
+  outline:none;transition:border-color .2s;line-height:1.8}
+textarea:focus{border-color:var(--gold)}
+textarea::placeholder{color:var(--text3)}
+.btn-row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;align-items:center}
+button{font-family:'Cinzel',serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+  cursor:pointer;padding:10px 22px;border-radius:4px;transition:all .15s;border:none;user-select:none}
+.btn-p{background:linear-gradient(135deg,#c9a84c,#a8882a);color:#0a0d14;font-weight:700;box-shadow:0 2px 12px rgba(201,168,76,.2)}
+.btn-p:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 20px rgba(201,168,76,.35)}
+.btn-p:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn-g{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btn-g:hover{border-color:var(--gold);color:var(--gold)}
+.prog-wrap{margin-bottom:16px}
+.prog-item{display:flex;align-items:center;gap:10px;padding:5px 0;font-family:'JetBrains Mono',monospace;
+  font-size:12px;border-bottom:1px solid rgba(255,255,255,.022);animation:fu .2s ease}
+.prog-item:last-child{border-bottom:none}
+.pdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.d-wait{background:var(--text3);animation:pl 1s infinite}
+.d-ok{background:var(--green)}.d-err{background:var(--red)}.d-skip{background:var(--text3)}
+@keyframes pl{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes fu{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+.err-box{background:rgba(224,92,92,.07);border:1px solid rgba(224,92,92,.2);border-radius:4px;
+  padding:12px 16px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--red);line-height:1.7}
+.sum-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:10px;margin-bottom:22px}
+.spill{background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:13px 14px;text-align:center}
+.sval{font-family:'Cinzel',serif;font-size:24px;font-weight:700;line-height:1;display:block}
+.slbl{font-family:'Cinzel',serif;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin-top:5px;display:block}
+.cg{color:var(--gold)}.cgr{color:var(--green)}.cr{color:var(--red)}.co{color:var(--orange)}.ct{color:var(--teal)}.c2{color:var(--text2)}
+.sh{font-family:'Cinzel',serif;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.sh::after{content:'';flex:1;height:1px;background:var(--border2)}
+.bc{background:var(--bg2);border:1px solid var(--border2);border-radius:5px;margin-bottom:10px;overflow:hidden;transition:border-color .15s}
+.bc:hover{border-color:rgba(201,168,76,.18)}.bc.open{border-color:rgba(201,168,76,.28)}
+.bh{display:flex;align-items:center;gap:10px;padding:13px 18px;cursor:pointer;user-select:none;flex-wrap:wrap}
+.bh:hover{background:rgba(201,168,76,.025)}
+.bstat{font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:3px;font-weight:700;flex-shrink:0}
+.sk{background:rgba(78,200,122,.1);color:var(--green);border:1px solid rgba(78,200,122,.22)}
+.sw{background:rgba(224,92,92,.08);color:var(--red);border:1px solid rgba(224,92,92,.18)}
+.bname{font-family:'Cinzel',serif;font-size:14px;font-weight:600;color:var(--gold2);flex:1;min-width:120px}
+.bdg{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.5px;padding:2px 7px;border-radius:3px;text-transform:uppercase;flex-shrink:0}
+.bdg-cm{background:rgba(160,108,213,.1);color:var(--purple);border:1px solid rgba(160,108,213,.22)}
+.bdg-lm{background:rgba(201,168,76,.1);color:var(--gold);border:1px solid rgba(201,168,76,.22)}
+.bdg-dn{background:rgba(224,144,80,.1);color:var(--orange);border:1px solid rgba(224,144,80,.2)}
+.bdg-dd{background:rgba(224,92,92,.08);color:var(--red);border:1px solid rgba(224,92,92,.18)}
+.bdg-mw{background:rgba(224,92,92,.08);color:var(--red);border:1px solid rgba(224,92,92,.18)}
+.bdg-mf{background:rgba(224,144,80,.1);color:var(--orange);border:1px solid rgba(224,144,80,.2)}
+.bdur{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2)}
+.chev{color:var(--text3);font-size:11px;transition:transform .2s;flex-shrink:0}
+.chev.open{transform:rotate(90deg)}
+.bbody{padding:0 18px 18px}
+.itabs{display:flex;border-bottom:1px solid var(--border2);margin:14px 0;gap:0;overflow-x:auto}
+.itab{font-family:'Cinzel',serif;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;
+  padding:7px 14px;color:var(--text3);cursor:pointer;border:none;border-bottom:2px solid transparent;
+  background:none;margin-bottom:-1px;transition:all .15s;border-radius:0;white-space:nowrap}
+.itab:hover{color:var(--gold2)}.itab.on{color:var(--gold);border-bottom-color:var(--gold)}
+.ipane{display:none}.ipane.on{display:block}
+.dt{width:100%;border-collapse:collapse;font-size:14px}
+.dt th{font-family:'Cinzel',serif;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--text3);text-align:right;padding:7px 10px 6px;border-bottom:1px solid var(--border2);white-space:nowrap}
+.dt th:first-child{text-align:left}
+.dt td{padding:7px 10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.022);
+  font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2);white-space:nowrap}
+.dt td:first-child{text-align:left;font-family:'Crimson Text',serif;font-size:15px;color:var(--text)}
+.dt tr:last-child td{border-bottom:none}
+.dt tr:hover td{background:rgba(255,255,255,.012)}
+.rg td{color:var(--gold2)!important}.rg td:first-child{color:var(--gold2)}
+/* worst = most downs/deaths = red highlight */
+.rw td{color:var(--red)!important}.rw td:first-child{color:var(--red)}
+.dc{position:relative;min-width:80px}
+.db{position:absolute;left:0;top:0;bottom:0;background:rgba(201,168,76,.08);border-radius:2px;pointer-events:none}
+.db-blue{background:rgba(91,155,213,.12)}
+.db-orange{background:rgba(224,144,80,.10)}
+.db-red{background:rgba(224,92,92,.10)}
+.dv{position:relative;z-index:1}
+.pd{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:middle;flex-shrink:0}
+.ib{display:inline-block;font-family:'Cinzel',serif;font-size:9px;padding:1px 5px;border-radius:2px;margin-left:3px;vertical-align:middle}
+.boon-good{color:var(--green)!important}.boon-ok{color:var(--orange)!important}
+.boon-bad{color:var(--red)!important}.boon-na{color:var(--text3)!important}
+.cc-hi{color:var(--blue)!important}.cc-md{color:var(--teal)!important}
+.cc-lo{color:var(--text2)!important}.cc-no{color:var(--text3)!important}
+.note-box{background:var(--bg3);border:1px solid var(--border2);border-radius:4px;
+  padding:10px 14px;margin-top:10px;font-size:13px;color:var(--text3);font-style:italic;line-height:1.6}
+.note-box strong{color:var(--text2);font-style:normal}
+.warn-box{background:rgba(224,144,80,.06);border:1px solid rgba(224,144,80,.2);border-radius:4px;
+  padding:10px 14px;margin-top:10px;font-size:14px;color:var(--orange);line-height:1.6}
+.warn-box strong{color:var(--gold2)}
+.mlist{display:flex;flex-direction:column;gap:4px}
+.mrow{display:flex;gap:10px;align-items:flex-start;background:var(--bg3);border-radius:3px;padding:8px 12px}
+.mlbl{flex-shrink:0;width:190px}
+.mname{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.8px;text-transform:uppercase;line-height:1.4}
+.mn-f{color:var(--orange)}.mn-w{color:var(--red)}
+.mdesc{font-size:12px;color:var(--text3);font-style:italic;margin-top:3px;line-height:1.4}
+.mhits{flex:1;font-size:14px;line-height:1.7;color:var(--text2)}
+.mp{color:var(--text)}.mt{color:var(--text3);font-size:11px;font-family:'JetBrains Mono',monospace}
+.mc{color:var(--orange);font-size:11px;font-family:'JetBrains Mono',monospace}
+.no-fail{color:var(--green);font-style:italic;font-size:14px;padding:8px 0}
+
+/* LEADERBOARD SECTION */
+.lbc{background:var(--bg2);border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-top:16px}
+.lbh{padding:13px 18px;border-bottom:1px solid var(--border2);font-family:'Cinzel',serif;
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;display:flex;align-items:center;gap:10px}
+.lbh::after{content:'';flex:1;height:1px;background:var(--border2)}
+.lbh-gold{color:var(--gold)}.lbh-orange{color:var(--orange)}.lbh-red{color:var(--red)}.lbh-blue{color:var(--blue)}
+.lbb{padding:4px 18px 18px}
+.lbn{font-style:italic;font-size:12px;color:var(--text3);margin-top:10px;padding-top:8px;border-top:1px solid var(--border2)}
+
+.emp{text-align:center;padding:70px 20px;color:var(--text2)}
+.ei{font-size:46px;opacity:.12;margin-bottom:14px}
+.et{font-family:'Cinzel',serif;font-size:18px;color:var(--gold);opacity:.35;margin-bottom:10px;letter-spacing:2px}
+.es{font-style:italic;font-size:15px;color:var(--text3)}
+.hidden{display:none!important}
+@media(max-width:640px){.dt th:nth-child(n+4),.dt td:nth-child(n+4){display:none}.bname{font-size:13px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="header">
+  <div class="eyebrow">Wings 1–8 · Guardian's Glade · CM / LM</div>
+  <h1>Raid Analyser</h1>
+  <p class="header-sub">Open locally in your browser · Full logs · No truncation</p>
+  <div><span class="vtag">v3.5 — DPS · Boons · Mechanics · Breakbar CC · Downstate &amp; Death Boards · Export</span></div>
+</header>
+
+<div class="input-panel">
+  <label class="lbl" for="urlInput">dps.report permalinks <span>— one per line</span></label>
+  <textarea id="urlInput" placeholder="https://dps.report/xxxx-20260316-xxxxxx_kela&#10;https://dps.report/xxxx-20260316-xxxxxx_vg&#10;..."></textarea>
+  <div class="btn-row">
+    <button class="btn-p" id="ab" onclick="go()">⚔ Analyse Logs</button>
+    <button class="btn-g" onclick="clr()">Clear All</button>
+    <button class="btn-g" id="expBtn" onclick="exportWeek()" disabled style="opacity:.4">↗ Export Week</button>
+    <span id="expFb" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);display:none">✓ Copied to clipboard</span>
+  </div>
+</div>
+
+<div id="pw" class="prog-wrap hidden"></div>
+<div id="eb" class="err-box hidden"></div>
+
+<div id="ss" class="sum-strip hidden">
+  <div class="spill"><span class="sval cg"  id="sB">0</span><span class="slbl">Bosses</span></div>
+  <div class="spill"><span class="sval cgr" id="sK">0</span><span class="slbl">Kills</span></div>
+  <div class="spill"><span class="sval cr"  id="sW">0</span><span class="slbl">Wipes</span></div>
+  <div class="spill"><span class="sval co"  id="sD">0</span><span class="slbl">Downstates</span></div>
+  <div class="spill"><span class="sval cr"  id="sDd">0</span><span class="slbl">Deaths</span></div>
+  <div class="spill"><span class="sval ct"  id="sT">—</span><span class="slbl">Total Time</span></div>
+</div>
+
+<div id="mc">
+  <div class="emp">
+    <div class="ei">⚔️</div>
+    <div class="et">No Logs Loaded</div>
+    <div class="es">Paste dps.report links above and click Analyse</div>
+  </div>
+</div>
+</div>
+
+<script>
+const BOONS=[
+  {id:1187, name:"Quickness",  short:"Quick", type:"dur",good:90,ok:70},
+  {id:30328,name:"Alacrity",   short:"Alac",  type:"dur",good:90,ok:70},
+  {id:717,  name:"Protection", short:"PROT",  type:"dur",good:50,ok:25},
+  {id:740,  name:"Might",      short:"Might", type:"int",good:24,ok:18},
+  {id:725,  name:"Fury",       short:"Fury",  type:"dur",good:80,ok:60},
+];
+
+const ML={
+  "vale guardian":[
+    {kw:["unstable magic","seeker"],sev:"f",desc:"Hit by a Seeker — kite seekers away from the group at all times"},
+    {kw:["teleport","distributed"],sev:"w",desc:"Teleported to wrong colour sector — everyone must stand on their own colour tile"},
+    {kw:["fixated"],sev:"f",desc:"Fixated player failed to move to their designated colour zone"},
+  ],
+  "gorseval":[
+    {kw:["world eater"],sev:"w",desc:"Breakbar not broken — World Eater one-shots the group; use all CC skills when the bar appears"},
+    {kw:["spectral","egg","darkness"],sev:"f",desc:"Hit by a Charged Soul or egg AoE — cleave orbs more aggressively"},
+  ],
+  "sabetha":[
+    {kw:["shell","cannon"],sev:"f",desc:"Hit by a cannonball — the cannon on that platform was not destroyed in time"},
+    {kw:["flame","flamethrower"],sev:"f",desc:"Hit by Karde's Flamethrower — avoid cardinal directions during this cast"},
+    {kw:["sapper"],sev:"f",desc:"Sapper not killed — bomb will wipe if it reaches Sabetha"},
+  ],
+  "slothasor":[
+    {kw:["narcolepsy","sleep","mushroom"],sev:"f",desc:"Player fell asleep — didn't eat the mushroom before the debuff expired"},
+    {kw:["tantrum"],sev:"f",desc:"Hit during Tantrum — all players must stop attacking when Sloth rears up"},
+    {kw:["volatile","poison"],sev:"f",desc:"Volatile Poison mishandled — carrier must move away from the group"},
+    {kw:["fear me","fear"],sev:"f",desc:"Fear Me! landed — break the CC bar when Sloth begins to rear up"},
+  ],
+  "matthias":[
+    {kw:["sacrificed","sacrifice"],sev:"w",desc:"Player sacrificed and NOT freed — always break teammates out immediately"},
+    {kw:["shards of rage","shard"],sev:"f",desc:"Hit by ice shards during Snowstorm — move through the shards quickly"},
+    {kw:["ablaze","burn","fire","unstable","reversal"],sev:"f",desc:"Fire debuff stacking — players with Unstable Ablaze must NOT stand near others or both will explode"},
+    {kw:["corruption","blood"],sev:"f",desc:"Corruption stacks too high — cleanse players more aggressively"},
+  ],
+  "keep construct":[
+    {kw:["phantasmal blades","blade","orb"],sev:"w",desc:"Hit by Phantasmal Blades — the orb carrier MUST intercept these; lethal to others"},
+    {kw:["static","lightning"],sev:"f",desc:"Hit by Static Dash — dodge when KC charges"},
+    {kw:["flamewall","flame wall"],sev:"f",desc:"Stood in the Flamewall — reposition before the add phase"},
+  ],
+  "xera":[
+    {kw:["boon thief"],sev:"f",desc:"Xera stole boons — player was inside her AoE during Boon Thief"},
+    {kw:["xera's fury","fury"],sev:"f",desc:"Hit by Xera's Fury — move to your assigned segment of the platform"},
+    {kw:["derangement"],sev:"f",desc:"Too many Derangement stacks — spread out during this phase"},
+  ],
+  "cairn":[
+    {kw:["shared agony"],sev:"f",desc:"Shared Agony not resolved — move to your own marker; stacking causes massive damage"},
+    {kw:["meteor","bombardment"],sev:"f",desc:"Hit by meteor — watch for ground AoE circles and move early"},
+  ],
+  "mursaat overseer":[
+    {kw:["claim","protect","dispel"],sev:"f",desc:"Mechanic role failed — assigned players must step on the correct board tiles in time"},
+    {kw:["jade"],sev:"f",desc:"Hit by a Jade Soldier — kill adds quickly"},
+  ],
+  "samarog":[
+    {kw:["spear","brutal aura"],sev:"f",desc:"Hit by Guldhem's Spear — tethered players must run away to absorb the projectile"},
+    {kw:["inevitable annihilation","consumed"],sev:"w",desc:"Player consumed by Guldhem — tank failed to intercept in time"},
+    {kw:["prisoner","chain"],sev:"f",desc:"Prisoner chains not resolved — players with chains need to move apart quickly"},
+  ],
+  "deimos":[
+    {kw:["mind crush"],sev:"w",desc:"Hit by Mind Crush — break the breakbar before it casts; usually lethal"},
+    {kw:["demonic agony","oil","vile"],sev:"f",desc:"Stood in an oil puddle — the Handkite must pull oils away from the group"},
+    {kw:["tearful farewell","pizza"],sev:"f",desc:"Hit by Tearful Farewell — spread into separate arena segments when telegraphed"},
+  ],
+  "soulless horror":[
+    {kw:["necrotic traversal","wall"],sev:"w",desc:"Walked into the spinning wall — kills instantly on contact"},
+    {kw:["unholy feast","tentacle"],sev:"f",desc:"Hit by tentacle AoE — don't stand near Desmina during this cast"},
+    {kw:["fixat"],sev:"f",desc:"Fixated player failed to maintain position"},
+  ],
+  "dhuum":[
+    {kw:["shackle","shackled"],sev:"w",desc:"Shackle not broken — nearby players MUST attack the chains immediately"},
+    {kw:["cataclysm"],sev:"w",desc:"Hit by Cataclysm — entire group must move to the safe zone"},
+    {kw:["ritual","green","circle"],sev:"w",desc:"Player missed a Greater Ritual circle — everyone must be on a green"},
+    {kw:["reap","reaped"],sev:"f",desc:"Killed by a soul reap AoE — watch for the ground telegraph"},
+  ],
+  "conjured amalgamate":[
+    {kw:["shield","sword","orb","collect"],sev:"f",desc:"Conjured weapon orb not collected — loot-saber players must pick up ALL orbs before they despawn"},
+    {kw:["slam","crush"],sev:"f",desc:"Hit by a weapon slam — stay grouped with your sword or shield sub-group"},
+  ],
+  "twin largos":[
+    {kw:["waterlogged"],sev:"f",desc:"Too many Waterlogged stacks — player spent too long submerged"},
+    {kw:["net","entangle"],sev:"f",desc:"Hit by Net Shot — spread out to prevent chains jumping between players"},
+    {kw:["synchron"],sev:"w",desc:"Boss health differential too high — equalise boss HP more carefully"},
+  ],
+  "qadim":[
+    {kw:["pyre","lamp"],sev:"w",desc:"Lamp not extinguished / pyre channelled — Lamp group failed; Pyre one-shots the raid"},
+    {kw:["fiery surge"],sev:"f",desc:"Hit by Qadim's surge — watch for ground telegraph and dodge"},
+    {kw:["branded","hydra","wyvern"],sev:"f",desc:"Add not CCd or killed in time — prioritise CC on platform enemies"},
+  ],
+  "cardinal adina":[
+    {kw:["stalagmite","pillar"],sev:"f",desc:"Hit by a stalagmite — move away from Adina when she submerges"},
+    {kw:["sand wall","ashes","wall"],sev:"f",desc:"Stood in a rotating sand wall — move with them"},
+    {kw:["hand"],sev:"f",desc:"Grabbed by an Earthen Hand — DPS the hands to free teammates"},
+  ],
+  "cardinal sabir":[
+    {kw:["ion shield","tornado","orb"],sev:"f",desc:"Hit by an Ion Shield tornado — maintain distance from floating orbs"},
+    {kw:["eye of the storm","breakbar"],sev:"w",desc:"Breakbar not broken during Eye of the Storm — use all CC skills"},
+  ],
+  "qadim the peerless":[
+    {kw:["pylon attunement","pylon"],sev:"w",desc:"Pylon not maintained — pylon kiter died or lost contact; typically wipes"},
+    {kw:["inevitable annihilation","bomb"],sev:"w",desc:"Bomb player ran into the group — bomb carrier MUST immediately move to the outer ring"},
+    {kw:["magic storm","greatsword"],sev:"f",desc:"Hit by a magic storm — dodge when QTP raises his weapon"},
+    {kw:["cc","breakbar","charging"],sev:"f",desc:"Breakbar not broken during CC phase — coordinate CC skills"},
+  ],
+  "greer":[
+    {kw:["fixated","kiter","fixation"],sev:"w",desc:"Kiter failed — the fixated player must stay continuously ahead of Greer"},
+    {kw:["spore","blight","burst"],sev:"f",desc:"Hit by Spore Burst — stay behind Greer and out of the frontal cone"},
+    {kw:["enrage"],sev:"w",desc:"Blight enrage triggered — kill adds faster"},
+  ],
+  "decima":[
+    {kw:["resonance","synchronized"],sev:"f",desc:"Resonance mechanic failed — group must be split into correct positions"},
+    {kw:["kiter","stormsong","storm"],sev:"w",desc:"Kiter went down — one player must continuously kite Decima's storm"},
+    {kw:["lightning","bolt","thunder"],sev:"f",desc:"Hit by lightning — move out of the large telegraph AoE early"},
+  ],
+  "ura":[
+    {kw:["bubble","trapped","steam bubble"],sev:"f",desc:"Caught in a steam bubble — attack it immediately to break free"},
+    {kw:["steam","scald","jet"],sev:"f",desc:"Hit by Ura's steam — dodge the front arc when she winds up"},
+    {kw:["pressure","wave","shockwave"],sev:"f",desc:"Hit by a pressure wave — watch for Ura stamping and dodge"},
+  ],
+  "guardian's glade":[
+    {kw:["tidal wave","wave"],sev:"f",desc:"Hit by Tidal Wave — jump over low waves or move perpendicular to high ones"},
+    {kw:["whirlpool"],sev:"f",desc:"Caught in a whirlpool — move away from vortex centres early"},
+    {kw:["spear","flowing spear"],sev:"f",desc:"Hit by Kela's spear — watch the telegraph before it launches"},
+    {kw:["orb","pearl","tide"],sev:"f",desc:"Orb not handled — designated players must collect orbs before they expire"},
+    {kw:["coral","reef","current"],sev:"f",desc:"Stood in growing ground AoE — reposition early, these expand over time"},
+  ],
+  "kela":[
+    {kw:["tidal wave","wave"],sev:"f",desc:"Hit by Tidal Wave — jump over low waves or move perpendicular to high ones"},
+    {kw:["whirlpool"],sev:"f",desc:"Caught in a whirlpool — move away from the vortex centres"},
+    {kw:["spear","flowing spear"],sev:"f",desc:"Hit by Kela's spear — watch the telegraph and dodge"},
+    {kw:["orb","pearl","tide"],sev:"f",desc:"Orb not handled — designated players must collect orbs"},
+  ],
+};
+
+const CC_CRIT=["vale guardian","gorseval","slothasor","keep construct","samarog","deimos",
+  "dhuum","conjured amalgamate","twin largos","qadim","cardinal sabir",
+  "qadim the peerless","greer","decima","ura","guardian's glade","kela"];
+
+const PC={
+  Guardian:"#72C1D9",Dragonhunter:"#72C1D9",Firebrand:"#72C1D9",Willbender:"#72C1D9",
+  Warrior:"#FFD166",Berserker:"#FFD166",Spellbreaker:"#FFD166",Bladesworn:"#FFD166",
+  Engineer:"#D09C59",Scrapper:"#D09C59",Holosmith:"#D09C59",Mechanist:"#D09C59",
+  Ranger:"#8DB580",Druid:"#8DB580",Soulbeast:"#8DB580",Untamed:"#8DB580",
+  Thief:"#C08F95",Daredevil:"#C08F95",Deadeye:"#C08F95",Specter:"#C08F95",
+  Elementalist:"#F68A87",Tempest:"#F68A87",Weaver:"#F68A87",Catalyst:"#F68A87",
+  Mesmer:"#B679D5",Chronomancer:"#B679D5",Mirage:"#B679D5",Virtuoso:"#B679D5",
+  Necromancer:"#52A76F",Reaper:"#52A76F",Scourge:"#52A76F",Harbinger:"#52A76F",
+  Revenant:"#D16E5A",Herald:"#D16E5A",Renegade:"#D16E5A",Vindicator:"#D16E5A",
+};
+const TRP=["🥇","🥈","🥉"];
+
+let logs=[],open={},tabs={};
+
+const $=id=>document.getElementById(id);
+const fDp=v=>!v?"—":v>=1000?(v/1000).toFixed(1)+"k":Math.round(v)+"";
+const fDm=v=>!v?"—":v>=1e6?(v/1e6).toFixed(2)+"M":v>=1e3?(v/1000).toFixed(0)+"k":v+"";
+const fPc=v=>v==null?"—":Math.round(v)+"%";
+const fSt=v=>v==null?"—":+(Math.round(v*10)/10).toFixed(1)+"";
+const fNm=v=>(!v&&v!==0)?"—":Math.round(v).toLocaleString();
+const fDr=ms=>{const s=Math.round(ms/1000),m=Math.floor(s/60),sc=s%60;return m?`${m}m ${sc}s`:`${sc}s`};
+const fTD=a=>fDr(a.reduce((x,y)=>x+y,0));
+const pc=p=>PC[p]||"#888";
+const pl=raw=>{raw=raw.trim();const m=raw.match(/dps\.report\/([a-zA-Z0-9_-]+)/);return m?"https://dps.report/"+m[1]:raw};
+function bCls(v,b){return v==null?"boon-na":v>=b.good?"boon-good":v>=b.ok?"boon-ok":"boon-bad"}
+function ccCls(v,tot){if(!v||v===0)return"cc-no";const s=tot>0?v/tot:0;return s>=.2?"cc-hi":s>=.1?"cc-md":"cc-lo"}
+
+function lookupMech(fn,mn){
+  fn=fn.toLowerCase();mn=mn.toLowerCase();
+  let lib=null;
+  for(const k of Object.keys(ML)){if(fn.includes(k)||k.split(" ").every(w=>fn.includes(w))){lib=ML[k];break}}
+  if(!lib)return null;
+  for(const e of lib){if(e.kw.some(k=>mn.includes(k)))return{desc:e.desc,sev:e.sev}}
+  return null;
+}
+function filterMechs(log){
+  return log.mechanics.filter(m=>m.hits&&m.hits.length>0).map(m=>{
+    const lk=lookupMech(log.fightName,m.name);
+    if(lk)return{...m,desc:lk.desc,sev:lk.sev};
+    if(m.iae===false)return{...m,desc:null,sev:"f"};
+    return null;
+  }).filter(Boolean);
+}
+
+async function fetchLog(u){const r=await fetch("https://dps.report/getJson?permalink="+encodeURIComponent(u));if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}
+
+function parseBoons(p){
+  const r={};if(!p.buffUptimes)return r;
+  for(const b of BOONS){const e=p.buffUptimes.find(x=>x.id===b.id);r[b.id]=e&&e.buffData&&e.buffData[0]?e.buffData[0].uptime??null:null}
+  return r;
+}
+function parseBB(p){
+  if(p.statsAll?.[0]?.breakbarDamage!=null)return p.statsAll[0].breakbarDamage;
+  if(p.dpsAll?.[0]?.breakbarDamage!=null)return p.dpsAll[0].breakbarDamage;
+  return null;
+}
+// Known NPCs that appear as players in certain encounters
+const NPC_NAMES=new Set([
+  "Shackled Prisoner","Saul D'Alessio","Saul D'Alesio",
+]);
+
+function parseLog(d){
+  const ps=(d.players||[]).filter(p=>!p.isFake&&!NPC_NAMES.has(p.name)&&!NPC_NAMES.has(p.account));
+  const log={fightName:d.fightName||d.name||"Unknown",success:!!d.success,duration:d.duration||"—",
+    durationMS:d.durationMS||0,isCM:!!d.isCM,isLCM:!!d.isLegendaryCM,
+    date:(d.timeStart||"").substring(0,10),players:[],mechanics:[]};
+  log.players=ps.map(p=>{
+    const da=p.dpsTargets?.[0]?.[0]??p.dpsAll?.[0]??{},df=p.defenses?.[0]??{};
+    return{name:p.account||p.name||"?",charName:p.name||"?",profession:p.profession||"?",group:p.group||1,
+      dps:da.dps||0,damage:da.damage||0,powerDps:da.powerDps||0,condDps:da.condiDps||0,
+      downCount:df.downCount||0,deadCount:df.deadCount||0,
+      boons:parseBoons(p),breakbarDamage:parseBB(p)};
+  }).sort((a,b)=>b.dps-a.dps);
+  log.mechanics=(d.mechanics||[]).filter(m=>m.playerHit&&m.playerHit.length>0).map(m=>({
+    name:m.name||"?",iae:m.isAchievementEligibility,
+    hits:(m.playerHit||[]).map(h=>({player:h.player,time:Math.round(h.time/1000),count:h.count||1}))}));
+  log.hasCC=log.players.some(p=>p.breakbarDamage!=null);
+  return log;
+}
+
+async function go(){
+  const lines=$("urlInput").value.split("\n").map(s=>s.trim()).filter(Boolean);
+  if(!lines.length)return;
+  $("ab").disabled=true;$("eb").classList.add("hidden");
+  const pw=$("pw");pw.innerHTML="";pw.classList.remove("hidden");
+  const errs=[];
+  for(const line of lines){
+    const u=pl(line),id=u.split("/").pop();
+    const row=document.createElement("div");row.className="prog-item";
+    row.innerHTML=`<div class="pdot d-wait"></div><span style="color:var(--text2)">${id}</span><span style="color:var(--text3)">fetching…</span>`;
+    $("pw").appendChild(row);
+    try{
+      const d=await fetchLog(u),p=parseLog(d);
+      const key=p.fightName+p.date+p.duration;
+      if(!logs.find(l=>l.fightName+l.date+l.duration===key)){
+        logs.push(p);const i=logs.length-1;open[i]=true;tabs[i]="dps";
+        row.innerHTML=`<div class="pdot d-ok"></div><span style="color:var(--text)">${id}</span><span style="color:var(--green)">${p.fightName} — ${p.success?"Kill":"Wipe"} (${p.duration})</span>`;
+      }else{row.innerHTML=`<div class="pdot d-skip"></div><span style="color:var(--text2)">${id}</span><span style="color:var(--text3)">already loaded</span>`}
+    }catch(e){errs.push(id+": "+e.message);row.innerHTML=`<div class="pdot d-err"></div><span style="color:var(--red)">${id}</span><span style="color:var(--red)">✗ ${e.message}</span>`}
+  }
+  $("ab").disabled=false;
+  if(errs.length){const eb=$("eb");eb.classList.remove("hidden");eb.innerHTML=errs.map(e=>"⚠ "+e).join("<br>")}
+  render();
+}
+function clr(){logs=[];open={};tabs={};$("urlInput").value="";$("eb").classList.add("hidden");$("pw").classList.add("hidden");$("pw").innerHTML="";render()}
+
+function exportWeek(){
+  if(!logs.length)return;
+  const data=aggregate();
+  const sorted=[...data].sort((a,b)=>b.oDps-a.oDps);
+  const date=logs[0]?.date||new Date().toISOString().slice(0,10);
+  const payload={
+    date,
+    players:sorted.map((p,i)=>({
+      name:p.name,
+      dpsRank:i+1,
+      totalDps:p.oDps,
+      downs:p.downs,
+      deaths:p.deaths,
+      totalCC:Math.round(p.totalCC)
+    }))
+  };
+  const json=JSON.stringify(payload,null,2);
+  navigator.clipboard.writeText(json).then(()=>{
+    const fb=$("expFb");
+    fb.style.display="inline";
+    setTimeout(()=>{fb.style.display="none";},2500);
+  }).catch(()=>{
+    // Fallback: show in a selectable overlay
+    const ov=document.createElement("div");
+    ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center";
+    ov.innerHTML=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:20px;width:540px;max-width:90vw">
+      <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;color:var(--gold);margin-bottom:10px">COPY THIS EXPORT</div>
+      <textarea readonly style="width:100%;height:220px;background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:10px;border-radius:4px;resize:none">${json}</textarea>
+      <button onclick="this.closest('div[style]').remove()" style="margin-top:10px;font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;background:transparent;border:1px solid var(--border);color:var(--text2);padding:6px 16px;border-radius:3px;cursor:pointer">Close</button>
+    </div>`;
+    ov.addEventListener("click",e=>{if(e.target===ov)ov.remove();});
+    document.body.appendChild(ov);
+    ov.querySelector("textarea").select();
+  });
+}
+function tog(i){open[i]=!open[i];rfr(i)}
+function swt(i,t){tabs[i]=t;rfr(i)}
+function rfr(i){const el=document.getElementById("c"+i);if(el){const tmp=document.createElement("div");tmp.innerHTML=bld(logs[i],i);el.replaceWith(tmp.firstElementChild)}}
+
+// ── Aggregate player stats across all logs ──────────────────────
+function aggregate(){
+  const tot={};
+  const ms=logs.reduce((s,l)=>s+l.durationMS,0);
+  for(const l of logs)for(const p of l.players){
+    if(!tot[p.name]){
+      tot[p.name]={name:p.name,profession:p.profession,charNames:[],professions:[],
+        totalDmg:0,deaths:0,downs:0,bosses:0,totalCC:0};
+    }
+    if(p.charName&&!tot[p.name].charNames.includes(p.charName))
+      tot[p.name].charNames.push(p.charName);
+    if(p.profession&&!tot[p.name].professions.includes(p.profession))
+      tot[p.name].professions.push(p.profession);
+    tot[p.name].totalDmg+=p.damage;
+    tot[p.name].deaths+=p.deadCount;
+    tot[p.name].downs+=p.downCount;
+    tot[p.name].bosses++;
+    if(p.breakbarDamage!=null)tot[p.name].totalCC+=p.breakbarDamage;
+  }
+  const s=ms/1000||1;
+  return Object.values(tot).map(p=>({
+    ...p,
+    oDps:Math.round(p.totalDmg/s),
+    charName:p.charNames.join(", ")||"?",
+    profession:p.professions[0]||p.profession||"?",
+  }));
+}
+
+// ── Boss card builder ────────────────────────────────────────────
+function bld(log,i){
+  const isOpen=!!open[i],tab=tabs[i]||"dps";
+  const tD=log.players.reduce((s,p)=>s+p.downCount,0);
+  const tK=log.players.reduce((s,p)=>s+p.deadCount,0);
+  const fm=filterMechs(log);
+  const isMatt=log.fightName.toLowerCase().includes("matthias");
+  let body="";
+  if(isOpen){
+    const top=log.players[0]?.dps||1;
+    // DPS
+    const dr=log.players.map((p,n)=>{
+      const bw=Math.round(p.dps/top*100),ig=n===0;
+      const db=p.downCount>0?`<span class="ib bdg-dn">↓${p.downCount}</span>`:"";
+      const kb=p.deadCount>0?`<span class="ib bdg-dd">☠${p.deadCount}</span>`:"";
+      return`<tr class="${ig?"rg":""}"><td><span class="pd" style="background:${pc(p.profession)}"></span>${p.name}<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-left:6px">${p.profession}</span>${db}${kb}</td>
+        <td class="dc"><div class="db" style="width:${bw}%"></div><span class="dv">${fDp(p.dps)}</span></td>
+        <td>${fDm(p.damage)}</td><td>${fDp(p.powerDps)}</td><td>${fDp(p.condDps)}</td></tr>`;
+    }).join("");
+    // Boons
+    const br=log.players.map((p,n)=>{
+      const cells=BOONS.map(b=>{const v=p.boons[b.id];return`<td class="${bCls(v,b)}">${b.type==="int"?fSt(v):fPc(v)}</td>`}).join("");
+      return`<tr class="${n===0?"rg":""}"><td><span class="pd" style="background:${pc(p.profession)}"></span>${p.name}<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-left:6px">${p.profession}</span></td>${cells}</tr>`;
+    }).join("");
+    const bh=BOONS.map(b=>`<th>${b.short}${b.type==="int"?" avg":""}</th>`).join("");
+    // CC
+    let ccPane="";
+    if(!log.hasCC){
+      ccPane=`<div class="note-box"><strong>No breakbar data in this log.</strong> Ensure ArcDPS and Elite Insights are up to date. Some bosses may also have no meaningful breakbar.</div>`;
+    }else{
+      const sorted=[...log.players].filter(p=>p.breakbarDamage!=null).sort((a,b)=>b.breakbarDamage-a.breakbarDamage);
+      const gTotal=sorted.reduce((s,p)=>s+p.breakbarDamage,0);
+      const topCC=sorted[0]?.breakbarDamage||1;
+      const fn=log.fightName.toLowerCase();
+      const isCrit=CC_CRIT.some(b=>fn.includes(b));
+      const noCC=log.players.filter(p=>p.breakbarDamage==null||p.breakbarDamage===0);
+      const ccRows=sorted.map((p,n)=>{
+        const bw=Math.round(p.breakbarDamage/topCC*100),pct=gTotal>0?Math.round(p.breakbarDamage/gTotal*100):0;
+        return`<tr class="${n===0?"rg":""}"><td><span class="pd" style="background:${pc(p.profession)}"></span>${p.name}<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-left:6px">${p.profession}</span></td>
+          <td class="dc"><div class="db db-blue" style="width:${bw}%"></div><span class="dv ${ccCls(p.breakbarDamage,gTotal)}">${fNm(p.breakbarDamage)}</span></td>
+          <td class="${ccCls(p.breakbarDamage,gTotal)}">${pct}%</td></tr>`;
+      }).join("");
+      const noCCRow=noCC.length?`<tr><td colspan="3" style="color:var(--text3);font-style:italic;font-size:13px;padding-top:6px">No CC data: ${noCC.map(p=>p.name).join(", ")}</td></tr>`:"";
+      const critNote=isCrit?`<div class="note-box"><strong>⚡ CC matters on this boss.</strong> Breakbar should be broken as a group — low CC from any player reduces the window and risks missing the stagger entirely.</div>`:"";
+      ccPane=`<table class="dt"><thead><tr><th style="text-align:left">Player</th><th>CC Damage</th><th>Share</th></tr></thead><tbody>${ccRows}${noCCRow}</tbody></table>
+        <div style="font-size:12px;color:var(--text3);font-style:italic;margin-top:8px">Total group CC: <span style="color:var(--blue)">${fNm(gTotal)}</span></div>${critNote}`;
+    }
+    // Mechanics
+    let mh=!fm.length?`<p class="no-fail">✓ No significant mechanic failures detected for this boss</p>`:
+      `<div class="mlist">${fm.map(m=>{
+        const nc=m.sev==="w"?"mn-w":"mn-f",pf=m.sev==="w"?"☠":"⚠";
+        const ps=m.hits.map(h=>`<span class="mp">${h.player}</span>${h.count>1?`<span class="mc"> ×${h.count}</span>`:""} <span class="mt">(${h.time}s)</span>`).join(", ");
+        return`<div class="mrow"><div class="mlbl"><div class="mname ${nc}">${pf} ${m.name}</div>${m.desc?`<div class="mdesc">${m.desc}</div>`:`<div class="mdesc" style="color:var(--red)">Unrecognised failure — note the name and update the library</div>`}</div><div class="mhits">${ps}</div></div>`;
+      }).join("")}</div>`;
+    const mattWarn=isMatt&&(tD>0||tK>0)?`<div class="warn-box"><strong>⚠ Matthias note:</strong> Deaths here are commonly caused by players with <strong>Unstable Ablaze</strong> or <strong>Corruption</strong> standing too close — when two affected players touch, both explode. This player-to-player interaction is <em>not recorded as a mechanic hit in the log</em>; EI only records boss skill hits. Review positioning during fire and blood phases.</div>`:"";
+    const tbr=[{id:"dps",lbl:"DPS"},{id:"boons",lbl:"Boons"},{id:"cc",lbl:"Breakbar CC"},{id:"mechs",lbl:`Mechanics${fm.length>0?" ("+fm.length+")":" "}${isMatt&&(tD>0||tK>0)?"⚠":""}`}];
+    const tbar=`<div class="itabs">${tbr.map(t=>`<button class="itab ${tab===t.id?"on":""}" onclick="swt(${i},'${t.id}')">${t.lbl}</button>`).join("")}</div>`;
+    body=`<div class="bbody">${tbar}
+      <div class="ipane ${tab==="dps"?"on":""}"><table class="dt"><thead><tr><th style="text-align:left">Player</th><th>DPS</th><th>Total Dmg</th><th>Power</th><th>Condi</th></tr></thead><tbody>${dr}</tbody></table></div>
+      <div class="ipane ${tab==="boons"?"on":""}"><table class="dt"><thead><tr><th style="text-align:left">Player</th>${bh}</tr></thead><tbody>${br}</tbody></table>
+        <div style="font-size:12px;color:var(--text3);font-style:italic;margin-top:8px"><span style="color:var(--green)">■</span> Good &nbsp;<span style="color:var(--orange)">■</span> Acceptable &nbsp;<span style="color:var(--red)">■</span> Poor &nbsp;|&nbsp; Quick/Alac ≥90% · Prot ≥50% · Might ≥24 · Fury ≥80%</div></div>
+      <div class="ipane ${tab==="cc"?"on":""}">${ccPane}</div>
+      <div class="ipane ${tab==="mechs"?"on":""}">${mh}${mattWarn}</div>
+    </div>`;
+  }
+  const mb=fm.length>0?`<span class="bdg ${fm.some(m=>m.sev==="w")?"bdg-mw":"bdg-mf"}">⚠ ${fm.length}</span>`:"";
+  const db=tD>0?`<span class="bdg bdg-dn">↓${tD}</span>`:"";
+  const kb=tK>0?`<span class="bdg bdg-dd">☠${tK}</span>`:"";
+  return`<div class="bc ${isOpen?"open":""}" id="c${i}">
+    <div class="bh" onclick="tog(${i})"><span class="bstat ${log.success?"sk":"sw"}">${log.success?"Kill":"Wipe"}</span>
+      <span class="bname">${log.fightName}</span>
+      ${log.isCM?'<span class="bdg bdg-cm">CM</span>':""}${log.isLCM?'<span class="bdg bdg-lm">LM</span>':""}
+      <span class="bdur">${log.duration}</span>${mb}${db}${kb}
+      <span class="chev ${isOpen?"open":""}">▶</span></div>${body}</div>`;
+}
+
+// ── Leaderboard builders ─────────────────────────────────────────
+function profCell(professions, primaryOnly=false){
+  const profs = primaryOnly ? [professions[0]||professions] : (Array.isArray(professions)?professions:[professions]);
+  return profs.filter(Boolean).map(pr=>
+    `<span class="pd" style="background:${pc(pr)};margin-right:4px"></span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${pr}</span>`
+  ).join('<span style="color:var(--text3);margin:0 4px">·</span>');
+}
+
+function bossAbbr(name){
+  return name.replace(/guardian's glade/i,"Glade")
+             .replace(/conjured amalgamate/i,"C.Amalg")
+             .replace(/qadim the peerless/i,"QTP")
+             .replace(/cardinal sabir/i,"Sabir")
+             .replace(/cardinal adina/i,"Adina")
+             .split(" ").slice(0,2).join(" ");
+}
+
+function buildDpsLB(data){
+  const sorted=[...data].sort((a,b)=>b.totalDmg-a.totalDmg);
+  const maxD=sorted[0]?.totalDmg||1;
+  return sorted.map((p,i)=>{
+    const tr=i<3?TRP[i]:`${i+1}`,bw=Math.round(p.totalDmg/maxD*100);
+    return`<tr class="${i===0?"rg":""}">
+      <td style="width:26px;text-align:center;font-size:13px">${tr}</td>
+      <td style="text-align:left">${profCell(p.professions||[p.profession])} <span style="margin-left:4px">${p.name}</span></td>
+      <td class="dc"><div class="db" style="width:${bw}%"></div><span class="dv" style="color:var(--gold2)">${fDp(p.oDps)}</span></td>
+      <td>${fDm(p.totalDmg)}</td>
+      <td style="color:var(--text3)">${p.bosses} boss${p.bosses!==1?"es":""}</td></tr>`;
+  }).join("");
+}
+
+function buildDownLB(data){
+  const sorted=[...data].sort((a,b)=>b.downs-a.downs);
+  return sorted.map((p,i)=>{
+    const tr=i<3?TRP[i]:`${i+1}`;
+    const valHtml=p.downs===0
+      ?`<span style="color:var(--text3)">0</span>`
+      :`<span style="color:var(--orange);font-weight:bold">${p.downs}</span>`;
+    const breakdown=logs.map(l=>{
+      const lp=l.players.find(x=>x.name===p.name);
+      if(!lp||!lp.downCount)return"";
+      return`<span style="color:var(--text3)">${bossAbbr(l.fightName)}:</span>&nbsp;<span style="color:var(--orange)">${lp.downCount}</span>`;
+    }).filter(Boolean).join("&ensp;&ensp;");
+    return`<tr>
+      <td style="width:26px;text-align:center;font-size:13px">${tr}</td>
+      <td style="text-align:left;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text)">${p.name}</td>
+      <td style="text-align:right;width:60px">${valHtml}</td>
+      <td style="text-align:left;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);white-space:normal">${breakdown||'<span style="color:var(--text3)">—</span>'}</td>
+    </tr>`;
+  }).join("");
+}
+
+function buildDeathLB(data){
+  const sorted=[...data].sort((a,b)=>b.deaths-a.deaths);
+  return sorted.map((p,i)=>{
+    const tr=i<3?TRP[i]:`${i+1}`;
+    const valHtml=p.deaths===0
+      ?`<span style="color:var(--text3)">0</span>`
+      :`<span style="color:var(--red);font-weight:bold">${p.deaths}</span>`;
+    const breakdown=logs.map(l=>{
+      const lp=l.players.find(x=>x.name===p.name);
+      if(!lp||!lp.deadCount)return"";
+      return`<span style="color:var(--text3)">${bossAbbr(l.fightName)}:</span>&nbsp;<span style="color:var(--red)">${lp.deadCount}</span>`;
+    }).filter(Boolean).join("&ensp;&ensp;");
+    return`<tr>
+      <td style="width:26px;text-align:center;font-size:13px">${tr}</td>
+      <td style="text-align:left;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text)">${p.name}</td>
+      <td style="text-align:right;width:60px">${valHtml}</td>
+      <td style="text-align:left;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);white-space:normal">${breakdown||'<span style="color:var(--text3)">—</span>'}</td>
+    </tr>`;
+  }).join("");
+}
+
+function buildCCLB(data){
+  const sorted=[...data].filter(p=>p.totalCC>0).sort((a,b)=>b.totalCC-a.totalCC);
+  if(!sorted.length)return`<tr><td colspan="3" style="color:var(--text3);font-style:italic;font-size:13px;padding:12px 0">No breakbar data found. Ensure ArcDPS and Elite Insights are up to date.</td></tr>`;
+  const maxV=sorted[0]?.totalCC||1;
+  return sorted.map((p,i)=>{
+    const tr=i<3?TRP[i]:`${i+1}`,bw=Math.round(p.totalCC/maxV*100);
+    return`<tr class="${i===0?"rg":""}">
+      <td style="width:26px;text-align:center;font-size:13px">${tr}</td>
+      <td style="text-align:left;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text)">${p.name}</td>
+      <td class="dc"><div class="db db-blue" style="width:${bw}%"></div><span class="dv" style="color:var(--blue)">${fNm(p.totalCC)}</span></td>
+    </tr>`;
+  }).join("");
+}
+
+// ── Main render ──────────────────────────────────────────────────
+function render(){
+  const has=logs.length>0;
+  $("ss").classList.toggle("hidden",!has);
+  const eb2=$("expBtn");eb2.disabled=!has;eb2.style.opacity=has?"1":".4";
+  if(has){
+    const kills=logs.filter(l=>l.success).length;
+    const downs=logs.reduce((s,l)=>s+l.players.reduce((ss,p)=>ss+p.downCount,0),0);
+    const deaths=logs.reduce((s,l)=>s+l.players.reduce((ss,p)=>ss+p.deadCount,0),0);
+    $("sB").textContent=logs.length;$("sK").textContent=kills;$("sW").textContent=logs.length-kills;
+    $("sD").textContent=downs;$("sDd").textContent=deaths;$("sT").textContent=fTD(logs.map(l=>l.durationMS));
+  }
+  const c=$("mc");
+  if(!has){c.innerHTML=`<div class="emp"><div class="ei">⚔️</div><div class="et">No Logs Loaded</div><div class="es">Paste dps.report links above and click Analyse</div></div>`;return}
+
+  const data=aggregate();
+  const multiLog=logs.length>1;
+
+  const downDeathThead=`<thead><tr>
+    <th style="width:26px"></th>
+    <th style="text-align:left">Player</th>
+    <th>Total</th>
+    <th style="text-align:left">Bosses</th>
+  </tr></thead>`;
+
+  const ccThead=`<thead><tr>
+    <th style="width:26px"></th>
+    <th style="text-align:left">Player</th>
+    <th>Total CC</th>
+  </tr></thead>`;
+
+  c.innerHTML=`
+    <div class="sh">Boss Logs — ${logs[0]?.date||""}</div>
+    ${logs.map((l,i)=>bld(l,i)).join("")}
+
+    <div class="sh" style="margin-top:32px">Session Leaderboards</div>
+
+    <div class="lbc">
+      <div class="lbh lbh-gold">⚔ DPS Ranking</div>
+      <div class="lbb">
+        <table class="dt" style="margin-top:10px">
+          <thead><tr>
+            <th style="width:26px"></th>
+            <th style="text-align:left">Player</th>
+            <th>Overall DPS</th>
+            <th>Total Damage</th>
+            <th>Bosses</th>
+          </tr></thead>
+          <tbody>${buildDpsLB(data)}</tbody>
+        </table>
+        <div class="lbn">Overall DPS = boss damage only ÷ combined fight duration${multiLog?" (weighted by fight length)":""}</div>
+      </div>
+    </div>
+
+    <div class="lbc">
+      <div class="lbh lbh-orange">↓ Times Downed</div>
+      <div class="lbb">
+        <table class="dt" style="margin-top:10px">
+          ${downDeathThead}
+          <tbody>${buildDownLB(data)}</tbody>
+        </table>
+        <div class="lbn">Total downstates across all bosses · Per-boss breakdown shown inline</div>
+      </div>
+    </div>
+
+    <div class="lbc">
+      <div class="lbh lbh-red">☠ Times Died</div>
+      <div class="lbb">
+        <table class="dt" style="margin-top:10px">
+          ${downDeathThead}
+          <tbody>${buildDeathLB(data)}</tbody>
+        </table>
+        <div class="lbn">Full deaths (not recovered from downstate) across all bosses · Per-boss breakdown shown inline</div>
+      </div>
+    </div>
+
+    <div class="lbc">
+      <div class="lbh lbh-blue">⚡ Breakbar CC Ranking</div>
+      <div class="lbb">
+        <table class="dt" style="margin-top:10px">
+          ${ccThead}
+          <tbody>${buildCCLB(data)}</tbody>
+        </table>
+        <div class="lbn">Total breakbar damage across all bosses</div>
+      </div>
+    </div>`;
+}
+
+</script>
+</body>
+</html>
