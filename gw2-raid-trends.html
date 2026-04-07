@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GW2 Raid Trends</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#090c12;--bg2:#0f1420;--bg3:#151c2e;
+  --gold:#c9a84c;--gold2:#e8cf88;
+  --teal:#3ec9d6;--red:#e05c5c;--orange:#e09050;--green:#4ec87a;--purple:#a06cd5;--blue:#5b9bd5;
+  --border:rgba(201,168,76,0.2);--border2:rgba(201,168,76,0.08);
+  --text:#c4cad8;--text2:#7a8499;--text3:#4a5266;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Crimson Text',Georgia,serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:16px;line-height:1.5;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 70% 40% at 50% 0%,rgba(201,168,76,.07) 0%,transparent 65%),
+             radial-gradient(ellipse 30% 50% at 100% 100%,rgba(62,201,214,.04) 0%,transparent 60%)}
+.app{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:0 20px 80px}
+
+.header{text-align:center;padding:48px 0 34px;border-bottom:1px solid var(--border);margin-bottom:26px;position:relative}
+.header::before,.header::after{content:'⚜';position:absolute;top:50px;color:var(--gold);opacity:.22;font-size:26px}
+.header::before{left:0}.header::after{right:0}
+.eyebrow{font-family:'Cinzel',serif;font-size:10px;letter-spacing:5px;text-transform:uppercase;color:var(--gold);opacity:.5;margin-bottom:10px}
+h1{font-family:'Cinzel',serif;font-size:clamp(22px,5vw,40px);font-weight:900;letter-spacing:3px;color:var(--gold);text-shadow:0 0 40px rgba(201,168,76,.2);line-height:1.1}
+.header-sub{margin-top:8px;color:var(--text2);font-style:italic;font-size:16px}
+.vtag{display:inline-block;font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;padding:2px 8px;border-radius:3px;
+  background:rgba(91,155,213,.1);color:var(--blue);border:1px solid rgba(91,155,213,.2);margin-top:10px}
+
+.input-panel{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:22px;margin-bottom:22px;position:relative}
+.input-panel::before{content:'';position:absolute;top:0;left:24px;right:24px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.3}
+.lbl{display:block;font-family:'Cinzel',serif;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:10px}
+.lbl span{color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0;text-transform:none;margin-left:8px}
+textarea{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:4px;color:var(--text);
+  font-family:'JetBrains Mono',monospace;font-size:12px;padding:12px 14px;resize:vertical;min-height:80px;
+  outline:none;transition:border-color .2s;line-height:1.8}
+textarea:focus{border-color:var(--gold)}
+textarea::placeholder{color:var(--text3)}
+.btn-row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;align-items:center}
+button{font-family:'Cinzel',serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+  cursor:pointer;padding:10px 22px;border-radius:4px;transition:all .15s;border:none;user-select:none}
+.btn-p{background:linear-gradient(135deg,#c9a84c,#a8882a);color:#0a0d14;font-weight:700;box-shadow:0 2px 12px rgba(201,168,76,.2)}
+.btn-p:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(201,168,76,.35)}
+.btn-g{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btn-g:hover{border-color:var(--gold);color:var(--gold)}
+
+.err-box{background:rgba(224,92,92,.07);border:1px solid rgba(224,92,92,.2);border-radius:4px;
+  padding:10px 14px;margin-top:12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--red)}
+
+.sh{font-family:'Cinzel',serif;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.sh::after{content:'';flex:1;height:1px;background:var(--border2)}
+
+.week-item{display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(--bg2);
+  border:1px solid var(--border2);border-radius:4px;margin-bottom:6px}
+.week-date{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text);flex:1}
+.week-count{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)}
+.week-remove{font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;padding:3px 10px;
+  background:transparent;border:1px solid rgba(224,92,92,.3);color:var(--red);border-radius:3px;cursor:pointer}
+.week-remove:hover{background:rgba(224,92,92,.1)}
+
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:22px;margin-bottom:16px;position:relative}
+.chart-card::before{content:'';position:absolute;top:0;left:24px;right:24px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.2}
+.chart-title{font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+.chart-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-left:10px;text-transform:none;letter-spacing:0}
+.chart-wrap{position:relative;height:300px}
+
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;align-items:center}
+.pill{font-family:'JetBrains Mono',monospace;font-size:11px;padding:3px 10px;border-radius:20px;
+  cursor:pointer;border:1px solid;transition:opacity .15s;user-select:none;background:none}
+.pill.off{opacity:.25}
+.pill-legend{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);
+  margin-right:6px;white-space:nowrap;display:flex;gap:10px;align-items:center}
+.leg-dashed{border-bottom:2px dashed var(--text3);padding-bottom:1px}
+.leg-solid{border-bottom:2px solid var(--text3);padding-bottom:1px}
+
+.emp{text-align:center;padding:50px 20px;color:var(--text2)}
+.ei{font-size:40px;opacity:.12;margin-bottom:14px}
+.et{font-family:'Cinzel',serif;font-size:16px;color:var(--gold);opacity:.35;margin-bottom:8px;letter-spacing:2px}
+.es{font-style:italic;font-size:14px;color:var(--text3)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header class="header">
+  <div class="eyebrow">Week on Week · Session Trends</div>
+  <h1>Raid Trends</h1>
+  <p class="header-sub">Import weekly exports from the Raid Analyser</p>
+  <div><span class="vtag">v1.0 — Downs &amp; Deaths · DPS Rank · Breakbar CC</span></div>
+</header>
+
+<div class="input-panel">
+  <label class="lbl" for="jsonInput">Paste week export <span>— from Raid Analyser → Export Week</span></label>
+  <textarea id="jsonInput" rows="4" placeholder='{"date":"2026-03-30","players":[{"name":"Account.1234","dpsRank":1,"totalDps":25000,"downs":0,"deaths":0,"totalCC":12500}, ...]}'></textarea>
+  <div class="btn-row">
+    <button class="btn-p" onclick="addWeek()">+ Add Week</button>
+    <button class="btn-g" onclick="clearAll()">Clear All</button>
+  </div>
+  <div id="inputErr" class="err-box hidden"></div>
+</div>
+
+<div id="weeksList" class="hidden">
+  <div class="sh">Loaded Weeks</div>
+  <div id="weeksInner"></div>
+</div>
+
+<div id="charts" class="hidden" style="margin-top:28px">
+  <div class="sh">Session Trends</div>
+
+  <!-- Downs & Deaths -->
+  <div class="chart-card">
+    <div class="chart-title">↓ Downs &amp; ☠ Deaths <span class="chart-sub">dashed = downs &nbsp;·&nbsp; solid = deaths</span></div>
+    <div id="ddPills" class="pills"></div>
+    <div class="chart-wrap"><canvas id="ddChart"></canvas></div>
+  </div>
+
+  <!-- DPS Rank -->
+  <div class="chart-card">
+    <div class="chart-title">⚔ DPS Rank <span class="chart-sub">1st place at top</span></div>
+    <div id="rankPills" class="pills"></div>
+    <div class="chart-wrap"><canvas id="rankChart"></canvas></div>
+  </div>
+
+  <!-- CC -->
+  <div class="chart-card">
+    <div class="chart-title">⚡ Breakbar CC Total</div>
+    <div id="ccPills" class="pills"></div>
+    <div class="chart-wrap"><canvas id="ccChart"></canvas></div>
+  </div>
+</div>
+
+<div id="emptyState">
+  <div class="emp">
+    <div class="ei">📈</div>
+    <div class="et">No Data Yet</div>
+    <div class="es">Paste a week export above and click Add Week to begin tracking trends</div>
+  </div>
+</div>
+
+</div><!-- .app -->
+<script>
+// ── Palette & state ──────────────────────────────────────────────
+const PALETTE=[
+  '#e8cf88','#3ec9d6','#e05c5c','#4ec87a',
+  '#a06cd5','#5b9bd5','#e09050','#f68a87',
+  '#8db580','#c08f95'
+];
+let weeks=[];
+const colorMap={};
+let paletteIdx=0;
+let charts={dd:null,rank:null,cc:null};
+const hidden={dd:new Set(),rank:new Set(),cc:new Set()};
+
+// ── Helpers ──────────────────────────────────────────────────────
+function getColor(name){
+  if(!colorMap[name]){colorMap[name]=PALETTE[paletteIdx%PALETTE.length];paletteIdx++;}
+  return colorMap[name];
+}
+
+// All unique player names in order of first appearance (weeks already date-sorted)
+function allPlayers(){
+  const seen=new Set(),out=[];
+  weeks.forEach(w=>w.players.forEach(p=>{
+    if(!seen.has(p.name)){seen.add(p.name);out.push(p.name);getColor(p.name);}
+  }));
+  return out;
+}
+
+function sortedDates(){
+  return [...new Set(weeks.map(w=>w.date))].sort();
+}
+
+function getVal(date,name,field){
+  const w=weeks.find(x=>x.date===date);
+  if(!w)return null;
+  const p=w.players.find(x=>x.name===name);
+  return(p!=null&&p[field]!=null)?p[field]:null;
+}
+
+// ── Week management ──────────────────────────────────────────────
+function addWeek(){
+  const raw=document.getElementById('jsonInput').value.trim();
+  const errEl=document.getElementById('inputErr');
+  errEl.classList.add('hidden');
+  let data;
+  try{data=JSON.parse(raw);}
+  catch(e){
+    errEl.textContent='⚠ Invalid JSON — make sure you copied the full export from the Raid Analyser';
+    errEl.classList.remove('hidden');return;
+  }
+  if(!data.date||!Array.isArray(data.players)||!data.players.length){
+    errEl.textContent='⚠ Unrecognised format — expected {date, players:[...]}';
+    errEl.classList.remove('hidden');return;
+  }
+  const idx=weeks.findIndex(w=>w.date===data.date);
+  if(idx>=0){weeks[idx]=data;}else{weeks.push(data);}
+  weeks.sort((a,b)=>a.date.localeCompare(b.date));
+  allPlayers(); // assign colors in date order
+  document.getElementById('jsonInput').value='';
+  render();
+}
+
+function removeWeek(date){
+  weeks=weeks.filter(w=>w.date!==date);
+  render();
+}
+
+function clearAll(){
+  weeks=[];
+  ['dd','rank','cc'].forEach(id=>{if(charts[id]){charts[id].destroy();charts[id]=null;}});
+  render();
+}
+
+// ── Player toggle ────────────────────────────────────────────────
+function togglePlayer(chartId,name){
+  if(hidden[chartId].has(name))hidden[chartId].delete(name);
+  else hidden[chartId].add(name);
+  const chart=charts[chartId];
+  if(chart){
+    chart.data.datasets.forEach(ds=>{
+      const n=chartId==='dd'?ds.label.replace(/_(?:downs|deaths)$/,''):ds.label;
+      ds.hidden=hidden[chartId].has(n);
+    });
+    chart.update();
+  }
+  renderPills(chartId);
+}
+
+function renderPills(chartId){
+  const ps=allPlayers();
+  const container=document.getElementById(chartId+'Pills');
+  container.innerHTML='';
+  if(chartId==='dd'){
+    const leg=document.createElement('div');
+    leg.className='pill-legend';
+    leg.innerHTML='<span class="leg-dashed">↓ downs</span><span class="leg-solid">☠ deaths</span>';
+    container.appendChild(leg);
+  }
+  ps.forEach((name,idx)=>{
+    const color=getColor(name);
+    const isOff=hidden[chartId].has(name);
+    const pill=document.createElement('button');
+    pill.className='pill'+(isOff?' off':'');
+    pill.style.cssText=`color:${color};border-color:${color}66;background:${color}14`;
+    pill.textContent=name;
+    pill.dataset.chartId=chartId;
+    pill.dataset.playerIdx=String(idx);
+    container.appendChild(pill);
+  });
+}
+
+// Delegated pill listener — one per container, set up once
+function initPillListeners(){
+  ['dd','rank','cc'].forEach(chartId=>{
+    document.getElementById(chartId+'Pills').addEventListener('click',e=>{
+      const pill=e.target.closest('.pill[data-player-idx]');
+      if(!pill)return;
+      const ps=allPlayers();
+      const name=ps[parseInt(pill.dataset.playerIdx)];
+      if(name)togglePlayer(pill.dataset.chartId,name);
+    });
+  });
+}
+
+// ── Chart config ─────────────────────────────────────────────────
+const xScale={
+  grid:{color:'rgba(201,168,76,0.06)'},
+  border:{color:'rgba(201,168,76,0.12)'},
+  ticks:{color:'#7a8499',font:{family:"'JetBrains Mono'",size:11}}
+};
+const yScaleBase={
+  grid:{color:'rgba(201,168,76,0.06)'},
+  border:{color:'rgba(201,168,76,0.12)'},
+  ticks:{color:'#7a8499',font:{family:"'JetBrains Mono'",size:11}}
+};
+const ttBase={
+  backgroundColor:'rgba(9,12,18,0.97)',
+  borderColor:'rgba(201,168,76,0.25)',
+  borderWidth:1,
+  titleColor:'#c9a84c',
+  bodyColor:'#c4cad8',
+  padding:10,
+  titleFont:{family:"'JetBrains Mono'",size:12},
+  bodyFont:{family:"'JetBrains Mono'",size:11},
+  itemSort:(a,b)=>a.parsed.y-b.parsed.y
+};
+const dsBase=(color,isHidden)=>({
+  borderColor:color,backgroundColor:color+'1a',pointBackgroundColor:color,
+  pointRadius:5,pointHoverRadius:7,tension:0.3,borderWidth:2.5,
+  spanGaps:false,hidden:isHidden
+});
+
+// ── Build charts ─────────────────────────────────────────────────
+function buildDDChart(){
+  if(charts.dd){charts.dd.destroy();charts.dd=null;}
+  const ps=allPlayers(),dates=sortedDates();
+  const datasets=[];
+  ps.forEach(name=>{
+    const color=getColor(name),isHidden=hidden.dd.has(name);
+    const base=dsBase(color,isHidden);
+    datasets.push({...base,label:name+'_downs',borderDash:[6,3],
+      data:dates.map(d=>getVal(d,name,'downs'))});
+    datasets.push({...base,label:name+'_deaths',borderDash:[],
+      data:dates.map(d=>getVal(d,name,'deaths'))});
+  });
+  charts.dd=new Chart(document.getElementById('ddChart'),{
+    type:'line',
+    data:{labels:dates,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{...ttBase,callbacks:{
+          label:ctx=>{
+            if(ctx.parsed.y===null||ctx.dataset.hidden)return null;
+            const isD=ctx.dataset.label.endsWith('_downs');
+            const name=ctx.dataset.label.replace(/_(?:downs|deaths)$/,'');
+            return`${name} ${isD?'↓':'☠'}: ${ctx.parsed.y}`;
+          }
+        }}
+      },
+      scales:{x:xScale,y:{...yScaleBase,min:0,ticks:{...yScaleBase.ticks,stepSize:1}}}
+    }
+  });
+  renderPills('dd');
+}
+
+function buildRankChart(){
+  if(charts.rank){charts.rank.destroy();charts.rank=null;}
+  const ps=allPlayers(),dates=sortedDates();
+  const maxRank=Math.max(10,...weeks.flatMap(w=>w.players.map(p=>p.dpsRank)));
+  const datasets=ps.map(name=>{
+    const color=getColor(name);
+    return{...dsBase(color,hidden.rank.has(name)),label:name,
+      data:dates.map(d=>getVal(d,name,'dpsRank'))};
+  });
+  charts.rank=new Chart(document.getElementById('rankChart'),{
+    type:'line',
+    data:{labels:dates,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{...ttBase,
+          itemSort:(a,b)=>a.parsed.y-b.parsed.y,
+          callbacks:{
+            label:ctx=>{
+              if(ctx.parsed.y===null||ctx.dataset.hidden)return null;
+              return`${ctx.dataset.label}: #${ctx.parsed.y}`;
+            }
+          }
+        }
+      },
+      scales:{
+        x:xScale,
+        y:{...yScaleBase,
+          reverse:true,min:1,max:maxRank,
+          ticks:{...yScaleBase.ticks,stepSize:1,callback:v=>`#${v}`}
+        }
+      }
+    }
+  });
+  renderPills('rank');
+}
+
+function buildCCChart(){
+  if(charts.cc){charts.cc.destroy();charts.cc=null;}
+  const ps=allPlayers(),dates=sortedDates();
+  const datasets=ps.map(name=>{
+    const color=getColor(name);
+    return{...dsBase(color,hidden.cc.has(name)),label:name,
+      data:dates.map(d=>getVal(d,name,'totalCC'))};
+  });
+  charts.cc=new Chart(document.getElementById('ccChart'),{
+    type:'line',
+    data:{labels:dates,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{...ttBase,
+          itemSort:(a,b)=>b.parsed.y-a.parsed.y,
+          callbacks:{
+            label:ctx=>{
+              if(ctx.parsed.y===null||ctx.dataset.hidden)return null;
+              return`${ctx.dataset.label}: ${Math.round(ctx.parsed.y).toLocaleString()}`;
+            }
+          }
+        }
+      },
+      scales:{
+        x:xScale,
+        y:{...yScaleBase,min:0,
+          ticks:{...yScaleBase.ticks,callback:v=>v>=1000?(v/1000).toFixed(0)+'k':v}
+        }
+      }
+    }
+  });
+  renderPills('cc');
+}
+
+// ── Main render ──────────────────────────────────────────────────
+function render(){
+  const has=weeks.length>0;
+  document.getElementById('weeksList').classList.toggle('hidden',!has);
+  document.getElementById('charts').classList.toggle('hidden',!has);
+  document.getElementById('emptyState').classList.toggle('hidden',has);
+
+  if(!has){
+    ['dd','rank','cc'].forEach(id=>{if(charts[id]){charts[id].destroy();charts[id]=null;}});
+    document.getElementById('weeksInner').innerHTML='';
+    return;
+  }
+
+  // Weeks list
+  document.getElementById('weeksInner').innerHTML=weeks.map(w=>
+    `<div class="week-item">
+      <span class="week-date">${w.date}</span>
+      <span class="week-count">${w.players.length} players</span>
+      <button class="week-remove" data-date="${w.date}">Remove</button>
+    </div>`
+  ).join('');
+  document.querySelectorAll('.week-remove[data-date]').forEach(btn=>
+    btn.addEventListener('click',()=>removeWeek(btn.dataset.date))
+  );
+
+  buildDDChart();
+  buildRankChart();
+  buildCCChart();
+}
+
+initPillListeners();
+render();
+</script>
+</body>
+</html>
